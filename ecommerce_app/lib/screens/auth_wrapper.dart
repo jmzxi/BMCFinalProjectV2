@@ -1,10 +1,9 @@
-// Part 1: Imports
 import 'package:ecommerce_app/screens/home_screen.dart';
 import 'package:ecommerce_app/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-// Part 2: Widget Definition
+// This is the complete file from Module 4
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 

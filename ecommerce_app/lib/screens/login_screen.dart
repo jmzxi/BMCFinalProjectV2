@@ -1,13 +1,37 @@
 import 'package:ecommerce_app/screens/signup_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // From Module 4
 
-
+// This file combines the UI from Module 3 and the logic from Module 4
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  // 3. Create a GlobalKey for the Form (from Module 3)
+  final _formKey = GlobalKey<FormState>();
+
+  // 4. Create TextEditingControllers (from Module 3)
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  // --- Logic from Module 4 ---
+  bool _isLoading = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // --- End of Module 4 Logic ---
+
+  // 5. Clean up controllers when the widget is removed (from Module 3)
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // --- Login Function from Module 4 ---
   Future<void> _login() async {
     // 1. Check if the form is valid
     if (!_formKey.currentState!.validate()) {
@@ -57,31 +81,11 @@ class LoginScreen extends StatefulWidget {
       });
     }
   }
-
-}
-
-// 2. This is the State class
-class _LoginScreenState extends State<LoginScreen> {
-
-  final _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  bool _isLoading = false;
-
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  // --- End of Module 4 Function ---
 
   @override
   Widget build(BuildContext context) {
-
+    // UI from Module 3
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
@@ -94,82 +98,73 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _emailController, 
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Please enter a valid email';
+                    }
+                    return null; // 'null' means the input is valid
+                  },
                 ),
-                keyboardType: TextInputType.emailAddress,
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
                 
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-
-              
-              const SizedBox(height: 16),
-
-              
-              TextFormField(
-                controller: _passwordController, // 9. Link the controller
-                obscureText: true, // 10. This hides the password
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
+                // --- Button updated in Module 4 ---
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50), 
+                  ),
+                  // 1. Call our new _login function
+                  onPressed: _isLoading ? null : _login,  
+                  
+                  // 2. Show a spinner OR text based on _isLoading
+                  child: _isLoading 
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ) 
+                      : const Text('Login'),
                 ),
-                // 11. Validator function
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-              ),
+                // --- End of Module 4 Update ---
+
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const SignUpScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text("Don't have an account? Sign Up"),
+                ),
               ],
-              const SizedBox(height: 20),
-
-              // 2. The Login Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50), // 3. Make it wide
-                ),
-                // 4. onPressed is the click handler
-                onPressed:_login,
-                child: _isLoading 
-                  ? const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ) 
-                  :const Text('Login'),
-                ),
-              ),
-
-              // 6. A spacer
-              const SizedBox(height: 10),
-
-              // 7. The "Sign Up" toggle button
-              TextButton(
-                onPressed: () {
-                  // 8. Navigate to the Sign Up screen
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const SignUpScreen(),
-                    ),
-                  );
-                },
-                child: const Text("Don't have an account? Sign Up"),
-              ),
-
             ),
           ),
         ),

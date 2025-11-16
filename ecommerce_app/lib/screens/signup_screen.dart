@@ -1,8 +1,9 @@
 import 'package:ecommerce_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // From Module 4
+import 'package:cloud_firestore/cloud_firestore.dart'; // From Module 5
 
-
+// This file combines UI (Mod 3), Auth logic (Mod 4), and Firestore logic (Mod 5)
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -10,19 +11,25 @@ class SignUpScreen extends StatefulWidget {
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-// 2. This is the State class
 class _SignUpScreenState extends State<SignUpScreen> {
-
-  // 3. Create a GlobalKey for the Form
   final _formKey = GlobalKey<FormState>();
-
-  // 4. Create TextEditingControllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  // --- From Module 4 ---
   bool _isLoading = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  // --- From Module 5 ---
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // --- Sign Up Function (Combined from Module 4 & 5) ---
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -33,16 +40,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      // 1. This is the Firebase command to CREATE a user
-      await _auth.createUserWithEmailAndPassword(
+      // 1. This is the Firebase command to CREATE a user (from Mod 4)
+      final UserCredential userCredential = 
+          await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      
-      // 2. AuthWrapper will auto-navigate to HomeScreen.
+
+      // 2. --- THIS IS THE NEW PART FROM MODULE 5 ---
+      // After creating the user, save their info to Firestore
+      if (userCredential.user != null) {
+        // 3. Create a document in a 'users' collection
+        await _firestore.collection('users').doc(userCredential.user!.uid).set({
+          'email': _emailController.text.trim(),
+          'role': 'user', // 4. Set the default role to 'user'
+          'createdAt': FieldValue.serverTimestamp(), // For our records
+        });
+      }
+      // 5. AuthWrapper will auto-navigate to HomeScreen.
 
     } on FirebaseAuthException catch (e) {
-      // 3. Handle specific sign-up errors
+      // 6. Handle specific sign-up errors (from Mod 4)
       String message = 'An error occurred';
       if (e.code == 'weak-password') {
         message = 'The password provided is too weak.';
@@ -66,118 +84,90 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
     }
   }
-
-
-  // 5. Clean up controllers when the widget is removed
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  // --- End of Sign Up Function ---
 
   @override
   Widget build(BuildContext context) {
-    // 1. A Scaffold provides the basic screen structure
+    // UI from Module 3
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sign Up'),
       ),
-      // 2. SingleChildScrollView prevents the keyboard from 
-      //    causing a "pixel overflow" error
       body: SingleChildScrollView(
         child: Padding(
-          // 3. Add padding around the form
           padding: const EdgeInsets.all(16.0),
-          // 4. The Form widget acts as a container for our fields
           child: Form(
-            key: _formKey, // 5. Assign our key to the Form
-            // 6. A Column arranges its children vertically
+            key: _formKey,
             child: Column(
-              // 7. Center the contents of the column
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 1. A spacer
-              const SizedBox(height: 20),
-
-              // 2. The Email Text Field
-              TextFormField(
-                controller: _emailController, // 3. Link the controller
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(), // 4. Nice border
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
                 ),
-                keyboardType: TextInputType.emailAddress, // 5. Show '@' on keyboard
-                // 6. Validator function
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null; // 'null' means the input is valid
-                },
-              ),
-
-              // 7. A spacer
-              const SizedBox(height: 16),
-
-              // 8. The Password Text Field
-              TextFormField(
-                controller: _passwordController, // 9. Link the controller
-                obscureText: true, // 10. This hides the password
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
                 ),
-                // 11. Validator function
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-              ),
-              ],
-              const SizedBox(height: 20),
-
-              // 2. The Login Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50), // 3. Make it wide
-                ),
-                // 4. onPressed is the click handler
-                onPressed: _signUp, 
+                const SizedBox(height: 20),
                 
-                // 2. Show a spinner OR text
-                child: _isLoading 
-                    ? const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ) 
-                    :const Text('Sign Up'),
-              ),
+                // --- Button updated in Module 4 ---
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  // 1. Call our new _signUp function
+                  onPressed: _isLoading ? null : _signUp, 
+                  
+                  // 2. Show a spinner OR text
+                  child: _isLoading 
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ) 
+                      : const Text('Sign Up'),
+                ),
+                // --- End of Module 4 Update ---
 
-
-              // 6. A spacer
-              const SizedBox(height: 10),
-
-              // 7. The "Sign Up" toggle button
-              TextButton(
-                onPressed: () {
-                  // 8. Navigate to the Sign Up screen
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
-                child: const Text("Already have an account? Login"),
-              ),
-
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text("Already have an account? Login"),
+                ),
+              ],
             ),
           ),
         ),
